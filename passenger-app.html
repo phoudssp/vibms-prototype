@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIBMS - Passenger Mobile App</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="shared/data.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{
+    font-family:'Inter','Noto Sans Lao',sans-serif;
+    background:#f0f2f5;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;overflow:hidden;
+}
+
+/* === Phone Frame === */
+.phone-frame{
+    position:relative;width:390px;height:844px;
+    border:10px solid #1a1a1a;border-radius:50px;
+    background:#000;overflow:hidden;
+    box-shadow:0 25px 80px rgba(0,0,0,0.3),inset 0 0 0 2px #333;
+}
+
+/* Dynamic Island */
+.dynamic-island{
+    position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    width:126px;height:37px;background:#000;border-radius:20px;z-index:1000;
+}
+
+/* Status Bar */
+.status-bar{
+    position:absolute;top:0;left:0;right:0;height:54px;z-index:999;
+    display:flex;justify-content:space-between;align-items:flex-end;
+    padding:0 28px 6px;color:#fff;font-size:14px;font-weight:600;
+    pointer-events:none;
+}
+.status-bar.dark{color:#1a1a1a;}
+.status-time{font-size:16px;font-weight:700;letter-spacing:0.5px;}
+.status-icons{display:flex;gap:6px;align-items:center;font-size:13px;}
+.status-icons .fa-wifi{font-size:14px;}
+.status-icons .battery{width:25px;height:12px;border:1.5px solid currentColor;border-radius:3px;position:relative;display:inline-block;}
+.status-icons .battery::after{content:'';position:absolute;right:-4px;top:2.5px;width:2px;height:5px;background:currentColor;border-radius:0 1px 1px 0;}
+.status-icons .battery .level{position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:65%;background:currentColor;border-radius:1px;}
+
+/* Home Indicator */
+.home-indicator{
+    position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+    width:134px;height:5px;background:rgba(255,255,255,0.3);border-radius:3px;z-index:1000;
+}
+
+/* Screen Container */
+.screen-container{
+    position:absolute;top:0;left:0;right:0;bottom:0;
+    overflow:hidden;background:#f7f8fa;
+}
+
+/* Individual Screens */
+.screen{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    display:none;flex-direction:column;
+    transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),opacity 0.35s ease;
+}
+.screen.active{display:flex;}
+.screen.slide-in-right{animation:slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards;}
+.screen.slide-in-left{animation:slideInLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards;}
+.screen.slide-out-right{animation:slideOutRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards;}
+.screen.slide-out-left{animation:slideOutLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards;}
+
+@keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
+@keyframes slideInLeft{from{transform:translateX(-100%);}to{transform:translateX(0);}}
+@keyframes slideOutRight{from{transform:translateX(0);}to{transform:translateX(100%);}}
+@keyframes slideOutLeft{from{transform:translateX(0);}to{transform:translateX(-100%);}}
+
+/* Screen scrollable content */
+.screen-scroll{
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding-bottom:90px;
+}
+.screen-scroll::-webkit-scrollbar{display:none;}
+
+/* Bottom Navigation */
+.bottom-nav{
+    position:absolute;bottom:0;left:0;right:0;
+    height:83px;background:rgba(255,255,255,0.95);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-top:1px solid rgba(0,0,0,0.06);
+    display:flex;padding:0 8px;padding-bottom:24px;z-index:900;
+}
+.nav-tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;color:#9ca3af;font-size:10px;font-weight:500;
+    cursor:pointer;transition:color 0.2s;-webkit-tap-highlight-color:transparent;
+    padding-top:6px;
+}
+.nav-tab i{font-size:20px;transition:transform 0.2s;}
+.nav-tab.active{color:#2b6cb0;}
+.nav-tab.active i{transform:scale(1.1);}
+
+/* === Common Styles === */
+.card{
+    background:#fff;border-radius:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+    margin:0 16px 12px;padding:16px;
+}
+.section-title{
+    font-size:15px;font-weight:700;color:#1a1a1a;
+    padding:12px 16px 8px;
+}
+.badge{
+    display:inline-block;padding:3px 10px;border-radius:20px;
+    font-size:11px;font-weight:600;
+}
+
+/* ========================================
+   SCREEN 1: HOME / MAP
+   ======================================== */
+#screen-home{background:#f7f8fa;}
+#home-map{width:100%;height:60%;min-height:340px;}
+.home-sheet{
+    position:relative;margin-top:-24px;z-index:500;
+    background:#fff;border-radius:24px 24px 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,0.08);
+    padding:12px 0 20px;
+}
+.sheet-handle{
+    width:36px;height:4px;background:#ddd;border-radius:2px;
+    margin:0 auto 14px;
+}
+.search-bar{
+    display:flex;align-items:center;gap:10px;
+    margin:0 16px 14px;padding:13px 16px;
+    background:#f3f4f6;border-radius:14px;
+    font-size:15px;color:#9ca3af;cursor:pointer;
+}
+.search-bar i{color:#9ca3af;font-size:16px;}
+.quick-pills{
+    display:flex;gap:10px;padding:0 16px;margin-bottom:16px;overflow-x:auto;
+}
+.quick-pills::-webkit-scrollbar{display:none;}
+.pill{
+    flex-shrink:0;padding:8px 16px;border-radius:20px;
+    font-size:13px;font-weight:600;cursor:pointer;
+    transition:all 0.2s;border:2px solid transparent;
+}
+.pill-brt{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
+.pill-brt:hover,.pill-brt.active{background:#dc2626;color:#fff;}
+.pill-border{background:#eff6ff;color:#2563eb;border-color:#bfdbfe;}
+.pill-border:hover,.pill-border.active{background:#2563eb;color:#fff;}
+.pill-green{background:#ecfdf5;color:#059669;border-color:#a7f3d0;}
+.pill-green:hover,.pill-green.active{background:#059669;color:#fff;}
+
+.nearest-bus{
+    margin:0 16px;padding:14px 16px;
+    background:linear-gradient(135deg,#2b6cb0,#2563eb);
+    border-radius:16px;color:#fff;
+    display:flex;align-items:center;gap:14px;
+    cursor:pointer;
+}
+.nearest-bus .bus-icon{
+    width:44px;height:44px;background:rgba(255,255,255,0.2);
+    border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+}
+.nearest-bus .bus-info{flex:1;}
+.nearest-bus .bus-name{font-size:15px;font-weight:700;}
+.nearest-bus .bus-detail{font-size:12px;opacity:0.85;margin-top:2px;}
+.nearest-bus .bus-eta{
+    font-size:22px;font-weight:800;text-align:center;line-height:1;
+}
+.nearest-bus .bus-eta span{font-size:11px;font-weight:500;display:block;margin-top:2px;}
+
+/* ========================================
+   SCREEN 2: ROUTES
+   ======================================== */
+#screen-routes .routes-header{
+    background:linear-gradient(135deg,#2b6cb0,#1e40af);
+    padding:60px 16px 24px;color:#fff;
+}
+#screen-routes .routes-header h1{font-size:26px;font-weight:800;margin-bottom:4px;}
+#screen-routes .routes-header p{font-size:13px;opacity:0.8;}
+.routes-search{
+    display:flex;align-items:center;gap:10px;
+    margin:0 16px;padding:13px 16px;
+    background:#fff;border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    margin-top:-22px;position:relative;z-index:10;
+    margin-bottom:16px;
+}
+.routes-search input{
+    border:none;outline:none;flex:1;font-size:15px;
+    font-family:'Inter','Noto Sans Lao',sans-serif;
+    background:transparent;
+}
+.routes-search i{color:#9ca3af;}
+.route-card{
+    margin:0 16px 12px;padding:16px;background:#fff;
+    border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);
+    display:flex;align-items:center;gap:14px;
+    cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;
+    border-left:4px solid transparent;
+}
+.route-card:active{transform:scale(0.98);}
+.route-card .rc-icon{
+    width:48px;height:48px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;color:#fff;flex-shrink:0;
+}
+.route-card .rc-info{flex:1;}
+.route-card .rc-name{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:2px;}
+.route-card .rc-meta{font-size:12px;color:#6b7280;}
+.route-card .rc-fare{text-align:right;}
+.route-card .rc-fare .amount{font-size:16px;font-weight:700;color:#1a1a1a;}
+.route-card .rc-fare .label{font-size:11px;color:#9ca3af;}
+.route-card .rc-chevron{color:#d1d5db;font-size:14px;}
+
+/* ========================================
+   SCREEN 3: TICKETS
+   ======================================== */
+#screen-tickets .tickets-header{
+    background:linear-gradient(135deg,#2b6cb0,#1e40af);
+    padding:60px 16px 24px;color:#fff;
+}
+#screen-tickets .tickets-header h1{font-size:26px;font-weight:800;}
+.active-ticket{
+    margin:-20px 16px 16px;padding:20px;background:#fff;
+    border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,0.1);
+    position:relative;z-index:10;text-align:center;
+}
+.active-ticket .ticket-badge{
+    display:inline-block;padding:4px 14px;border-radius:20px;
+    font-size:12px;font-weight:700;margin-bottom:12px;
+}
+.active-ticket .ticket-badge.status-active{background:#ecfdf5;color:#059669;}
+.active-ticket .ticket-badge.status-used{background:#f3f4f6;color:#6b7280;}
+.qr-wrapper{
+    width:180px;height:180px;margin:0 auto 14px;
+    padding:10px;background:#fff;border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.06);
+    display:flex;align-items:center;justify-content:center;
+}
+.qr-wrapper canvas{border-radius:4px;}
+.ticket-route{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:4px;}
+.ticket-stations{font-size:13px;color:#6b7280;margin-bottom:10px;}
+.ticket-details{
+    display:flex;justify-content:space-around;
+    padding-top:12px;border-top:1px dashed #e5e7eb;
+}
+.ticket-details .td-item{text-align:center;}
+.ticket-details .td-label{font-size:11px;color:#9ca3af;margin-bottom:2px;}
+.ticket-details .td-value{font-size:14px;font-weight:700;color:#1a1a1a;}
+
+.past-ticket{
+    display:flex;align-items:center;gap:14px;
+    padding:14px 16px;border-bottom:1px solid #f3f4f6;
+    cursor:pointer;
+}
+.past-ticket:last-child{border-bottom:none;}
+.past-ticket .pt-icon{
+    width:40px;height:40px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;
+}
+.past-ticket .pt-info{flex:1;}
+.past-ticket .pt-route{font-size:14px;font-weight:600;color:#1a1a1a;}
+.past-ticket .pt-meta{font-size:12px;color:#9ca3af;margin-top:1px;}
+.past-ticket .pt-fare{font-size:14px;font-weight:700;color:#1a1a1a;text-align:right;}
+.past-ticket .pt-status{font-size:11px;text-align:right;}
+
+/* ========================================
+   SCREEN 4: E-WALLET
+   ======================================== */
+#screen-wallet .wallet-header{
+    background:linear-gradient(135deg,#2b6cb0,#1e40af);
+    padding:60px 16px 24px;color:#fff;
+}
+#screen-wallet .wallet-header h1{font-size:26px;font-weight:800;}
+.wallet-card{
+    margin:-20px 16px 16px;padding:24px 20px;
+    background:linear-gradient(135deg,#1e40af,#3b82f6);
+    border-radius:20px;color:#fff;position:relative;z-index:10;
+    box-shadow:0 8px 30px rgba(37,99,235,0.3);
+    overflow:hidden;
+}
+.wallet-card::before{
+    content:'';position:absolute;top:-30px;right:-30px;
+    width:120px;height:120px;background:rgba(255,255,255,0.08);
+    border-radius:50%;
+}
+.wallet-card::after{
+    content:'';position:absolute;bottom:-40px;left:-20px;
+    width:140px;height:140px;background:rgba(255,255,255,0.05);
+    border-radius:50%;
+}
+.wallet-card .wc-label{font-size:13px;opacity:0.8;margin-bottom:4px;}
+.wallet-card .wc-balance{font-size:34px;font-weight:800;letter-spacing:-0.5px;position:relative;z-index:1;}
+.wallet-card .wc-id{font-size:12px;opacity:0.6;margin-top:8px;position:relative;z-index:1;}
+
+.topup-section{padding:0 16px;margin-bottom:16px;}
+.topup-section .ts-title{font-size:13px;font-weight:700;color:#6b7280;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;}
+.topup-btns{display:flex;gap:10px;}
+.topup-btn{
+    flex:1;padding:14px 0;background:#eff6ff;border:2px solid #bfdbfe;
+    border-radius:14px;text-align:center;cursor:pointer;
+    transition:all 0.2s;
+}
+.topup-btn:active{background:#2b6cb0;color:#fff;border-color:#2b6cb0;}
+.topup-btn .tb-amount{font-size:16px;font-weight:700;color:#1e40af;}
+.topup-btn:active .tb-amount{color:#fff;}
+.topup-btn .tb-label{font-size:11px;color:#6b7280;}
+.topup-btn:active .tb-label{color:rgba(255,255,255,0.8);}
+
+.payment-methods{margin:0 16px 16px;}
+.pm-title{font-size:13px;font-weight:700;color:#6b7280;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;}
+.pm-item{
+    display:flex;align-items:center;gap:14px;
+    padding:14px;background:#fff;border-radius:14px;
+    margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    cursor:pointer;
+}
+.pm-item .pm-icon{
+    width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.pm-item .pm-name{flex:1;font-size:14px;font-weight:600;color:#1a1a1a;}
+.pm-item .pm-check{color:#d1d5db;}
+
+.tx-list{margin:0 16px;}
+.tx-title{font-size:13px;font-weight:700;color:#6b7280;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;padding:0 0;}
+.tx-item{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 0;border-bottom:1px solid #f3f4f6;
+}
+.tx-item:last-child{border-bottom:none;}
+.tx-icon{
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.tx-info{flex:1;}
+.tx-name{font-size:14px;font-weight:600;color:#1a1a1a;}
+.tx-date{font-size:12px;color:#9ca3af;margin-top:1px;}
+.tx-amount{font-size:14px;font-weight:700;text-align:right;}
+.tx-amount.debit{color:#ef4444;}
+.tx-amount.credit{color:#10b981;}
+
+/* ========================================
+   SCREEN 5: ROUTE DETAIL
+   ======================================== */
+#screen-route-detail .rd-header{
+    display:flex;align-items:center;gap:12px;
+    padding:60px 16px 16px;color:#fff;
+}
+#screen-route-detail .rd-back{
+    width:36px;height:36px;border-radius:10px;
+    background:rgba(255,255,255,0.2);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;color:#fff;
+}
+#screen-route-detail .rd-title{font-size:20px;font-weight:800;flex:1;}
+#screen-route-detail .rd-badge{
+    padding:4px 12px;border-radius:20px;
+    font-size:12px;font-weight:700;background:rgba(255,255,255,0.2);
+}
+.rd-info-bar{
+    display:flex;margin:-12px 16px 16px;position:relative;z-index:10;
+    background:#fff;border-radius:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    padding:14px;gap:0;
+}
+.rd-info-item{
+    flex:1;text-align:center;
+    border-right:1px solid #f3f4f6;
+}
+.rd-info-item:last-child{border-right:none;}
+.rd-info-item .ri-value{font-size:16px;font-weight:800;color:#1a1a1a;}
+.rd-info-item .ri-label{font-size:11px;color:#9ca3af;margin-top:2px;}
+
+.station-list{margin:0 16px;padding:0 0 0 24px;position:relative;}
+.station-list::before{
+    content:'';position:absolute;left:7px;top:8px;bottom:8px;
+    width:2px;background:#e5e7eb;
+}
+.station-item{
+    position:relative;padding:0 0 20px 24px;
+}
+.station-item:last-child{padding-bottom:0;}
+.station-dot{
+    position:absolute;left:-24px;top:4px;
+    width:16px;height:16px;border-radius:50%;
+    border:3px solid #2b6cb0;background:#fff;z-index:1;
+}
+.station-item:first-child .station-dot,
+.station-item:last-child .station-dot{
+    background:#2b6cb0;border-color:#2b6cb0;
+}
+.station-item.has-bus .station-dot{
+    background:#10b981;border-color:#10b981;
+    box-shadow:0 0 0 4px rgba(16,185,129,0.2);
+}
+.station-name{font-size:14px;font-weight:600;color:#1a1a1a;}
+.station-name-lo{font-size:12px;color:#6b7280;margin-top:1px;}
+.station-bus-tag{
+    display:inline-block;margin-top:4px;padding:2px 8px;
+    background:#ecfdf5;color:#059669;border-radius:8px;
+    font-size:11px;font-weight:600;
+}
+
+/* ========================================
+   SCREEN 6: PROFILE
+   ======================================== */
+#screen-profile .profile-header{
+    background:linear-gradient(135deg,#2b6cb0,#1e40af);
+    padding:60px 16px 32px;color:#fff;text-align:center;
+}
+.profile-avatar{
+    width:80px;height:80px;border-radius:50%;
+    background:rgba(255,255,255,0.2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;font-weight:800;color:#fff;
+    margin:0 auto 12px;border:3px solid rgba(255,255,255,0.3);
+}
+.profile-name{font-size:20px;font-weight:700;margin-bottom:2px;}
+.profile-phone{font-size:14px;opacity:0.8;}
+
+.lang-toggle{
+    margin:-16px 16px 16px;padding:14px 16px;
+    background:#fff;border-radius:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    display:flex;align-items:center;gap:12px;
+    position:relative;z-index:10;
+}
+.lang-toggle .lt-label{flex:1;font-size:14px;font-weight:600;color:#1a1a1a;}
+.lang-toggle .lt-btns{display:flex;gap:0;background:#f3f4f6;border-radius:10px;overflow:hidden;}
+.lang-btn{
+    padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;
+    transition:all 0.2s;border:none;background:transparent;color:#6b7280;
+    font-family:'Inter','Noto Sans Lao',sans-serif;
+}
+.lang-btn.active{background:#2b6cb0;color:#fff;}
+
+.settings-list{margin:0 16px 16px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.settings-item{
+    display:flex;align-items:center;gap:14px;
+    padding:16px;border-bottom:1px solid #f3f4f6;
+    cursor:pointer;
+}
+.settings-item:last-child{border-bottom:none;}
+.settings-item .si-icon{
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.settings-item .si-text{flex:1;font-size:15px;font-weight:500;color:#1a1a1a;}
+.settings-item .si-chevron{color:#d1d5db;font-size:14px;}
+
+.logout-btn{
+    margin:0 16px 24px;padding:16px;background:#fff;border-radius:16px;
+    text-align:center;color:#ef4444;font-size:15px;font-weight:600;
+    cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    transition:background 0.2s;
+}
+.logout-btn:active{background:#fef2f2;}
+
+/* Leaflet Overrides */
+.leaflet-container{font-family:'Inter',sans-serif;}
+.bus-marker{
+    width:32px;height:32px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:#fff;font-weight:700;
+    box-shadow:0 2px 8px rgba(0,0,0,0.25);
+    border:2px solid #fff;
+}
+.bus-popup{font-family:'Inter','Noto Sans Lao',sans-serif;padding:4px 0;}
+.bus-popup strong{font-size:14px;display:block;margin-bottom:3px;}
+.bus-popup .bp-meta{font-size:12px;color:#6b7280;line-height:1.5;}
+
+/* Toast notification */
+.toast{
+    position:absolute;top:65px;left:50%;transform:translateX(-50%) translateY(-20px);
+    background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:12px;
+    font-size:13px;font-weight:600;opacity:0;transition:all 0.3s;z-index:2000;
+    pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+    <div class="dynamic-island"></div>
+    <div class="status-bar" id="statusBar">
+        <div class="status-time">9:41</div>
+        <div class="status-icons">
+            <i class="fas fa-wifi"></i>
+            <span class="battery"><span class="level"></span></span>
+        </div>
+    </div>
+
+    <div class="screen-container">
+
+        <!-- ===== SCREEN 1: HOME / MAP ===== -->
+        <div class="screen active" id="screen-home">
+            <div id="home-map"></div>
+            <div class="home-sheet">
+                <div class="sheet-handle"></div>
+                <div class="search-bar" onclick="navigateTo('routes')">
+                    <i class="fas fa-search"></i>
+                    <span data-i18n="whereGoing">Where are you going?</span>
+                </div>
+                <div class="quick-pills">
+                    <div class="pill pill-brt active" onclick="filterMap('BRT')"><i class="fas fa-bolt" style="margin-right:4px;font-size:11px;"></i> BRT</div>
+                    <div class="pill pill-border" onclick="filterMap('Border')"><i class="fas fa-globe" style="margin-right:4px;font-size:11px;"></i> <span data-i18n="borderBus">Border Bus</span></div>
+                    <div class="pill pill-green" onclick="filterMap('Green')"><i class="fas fa-leaf" style="margin-right:4px;font-size:11px;"></i> <span data-i18n="greenBus">Green Bus</span></div>
+                </div>
+                <div class="nearest-bus" onclick="navigateTo('route-detail','BRT')">
+                    <div class="bus-icon"><i class="fas fa-bus"></i></div>
+                    <div class="bus-info">
+                        <div class="bus-name">BRT-001</div>
+                        <div class="bus-detail" data-i18n="arrivingAt">Arriving at Patuxai</div>
+                    </div>
+                    <div class="bus-eta">3<span>min</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN 2: ROUTES ===== -->
+        <div class="screen" id="screen-routes">
+            <div class="screen-scroll">
+                <div class="routes-header">
+                    <h1 data-i18n="routes">Routes</h1>
+                    <p data-i18n="routesSub">All bus services in Vientiane</p>
+                </div>
+                <div class="routes-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="routeSearchInput" data-i18n-placeholder="search" placeholder="Search routes..." oninput="filterRoutes(this.value)">
+                </div>
+                <div id="routeCards"></div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN 3: TICKETS ===== -->
+        <div class="screen" id="screen-tickets">
+            <div class="screen-scroll">
+                <div class="tickets-header">
+                    <h1 data-i18n="tickets">Tickets</h1>
+                </div>
+                <div class="active-ticket" id="activeTicketCard">
+                    <!-- Filled by JS -->
+                </div>
+                <div class="section-title" data-i18n="pastTickets">Past Tickets</div>
+                <div id="pastTicketsList" style="margin:0 16px;background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN 4: E-WALLET ===== -->
+        <div class="screen" id="screen-wallet">
+            <div class="screen-scroll">
+                <div class="wallet-header">
+                    <h1 data-i18n="wallet">Wallet</h1>
+                </div>
+                <div class="wallet-card">
+                    <div class="wc-label" data-i18n="balance">Balance</div>
+                    <div class="wc-balance" id="walletBalance">125,000 ₭</div>
+                    <div class="wc-id">VIBMS Pay **** 5678</div>
+                </div>
+                <div class="topup-section">
+                    <div class="ts-title" data-i18n="topUp">Top Up</div>
+                    <div class="topup-btns">
+                        <div class="topup-btn" onclick="topUp(50000)">
+                            <div class="tb-amount">50K</div>
+                            <div class="tb-label">LAK</div>
+                        </div>
+                        <div class="topup-btn" onclick="topUp(100000)">
+                            <div class="tb-amount">100K</div>
+                            <div class="tb-label">LAK</div>
+                        </div>
+                        <div class="topup-btn" onclick="topUp(200000)">
+                            <div class="tb-amount">200K</div>
+                            <div class="tb-label">LAK</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="payment-methods">
+                    <div class="pm-title" data-i18n="payMethods">Payment Methods</div>
+                    <div class="pm-item">
+                        <div class="pm-icon" style="background:#ecfdf5;color:#059669;"><i class="fas fa-qrcode"></i></div>
+                        <div class="pm-name">BCEL OnePay</div>
+                        <div class="pm-check"><i class="fas fa-check-circle" style="color:#10b981;"></i></div>
+                    </div>
+                    <div class="pm-item">
+                        <div class="pm-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-university"></i></div>
+                        <div class="pm-name">Bank Transfer</div>
+                        <div class="pm-check"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
+                <div class="tx-list">
+                    <div class="tx-title" data-i18n="history">Transaction History</div>
+                    <div id="txHistory"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN 5: ROUTE DETAIL ===== -->
+        <div class="screen" id="screen-route-detail">
+            <div class="screen-scroll">
+                <div class="rd-header" id="rdHeader" style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding-bottom:24px;">
+                    <div class="rd-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+                    <div class="rd-title" id="rdTitle">BRT Corridor</div>
+                    <div class="rd-badge" id="rdBadge">27 stops</div>
+                </div>
+                <div class="rd-info-bar" id="rdInfoBar">
+                    <div class="rd-info-item">
+                        <div class="ri-value" id="rdFreq">5 min</div>
+                        <div class="ri-label">Frequency</div>
+                    </div>
+                    <div class="rd-info-item">
+                        <div class="ri-value" id="rdDist">13.9 km</div>
+                        <div class="ri-label">Distance</div>
+                    </div>
+                    <div class="rd-info-item">
+                        <div class="ri-value" id="rdFare">4-7K ₭</div>
+                        <div class="ri-label">Fare</div>
+                    </div>
+                </div>
+                <div class="section-title" data-i18n="stationList">Stations</div>
+                <div class="station-list" id="stationList">
+                    <!-- Filled by JS -->
+                </div>
+                <div style="height:20px;"></div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN 6: PROFILE ===== -->
+        <div class="screen" id="screen-profile">
+            <div class="screen-scroll">
+                <div class="profile-header">
+                    <div class="profile-avatar">ກສ</div>
+                    <div class="profile-name">ນ. ແກ້ວ ສີສະຫວາດ</div>
+                    <div class="profile-phone">+856 20 5555 1234</div>
+                </div>
+                <div class="lang-toggle">
+                    <div class="lt-label"><i class="fas fa-globe" style="margin-right:8px;color:#2b6cb0;"></i> <span data-i18n="language">Language</span></div>
+                    <div class="lt-btns">
+                        <button class="lang-btn active" data-lang="lo" onclick="setLanguage('lo')">&#127473;&#127462; ລາວ</button>
+                        <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">&#127468;&#127463; EN</button>
+                    </div>
+                </div>
+                <div class="settings-list">
+                    <div class="settings-item">
+                        <div class="si-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-bell"></i></div>
+                        <div class="si-text" data-i18n="notifications">Notifications</div>
+                        <div class="si-chevron"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="si-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-credit-card"></i></div>
+                        <div class="si-text" data-i18n="payMethods">Payment Methods</div>
+                        <div class="si-chevron"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="si-icon" style="background:#ecfdf5;color:#059669;"><i class="fas fa-question-circle"></i></div>
+                        <div class="si-text" data-i18n="help">Help</div>
+                        <div class="si-chevron"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="si-icon" style="background:#f3f4f6;color:#6b7280;"><i class="fas fa-info-circle"></i></div>
+                        <div class="si-text" data-i18n="about">About</div>
+                        <div class="si-chevron"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
+                <div class="logout-btn" onclick="showToast('Logged out')">
+                    <i class="fas fa-sign-out-alt" style="margin-right:6px;"></i>
+                    <span data-i18n="logout">Logout</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <div class="nav-tab active" data-screen="home" onclick="navigateTo('home')">
+            <i class="fas fa-map-marked-alt"></i>
+            <span data-i18n="home">Home</span>
+        </div>
+        <div class="nav-tab" data-screen="routes" onclick="navigateTo('routes')">
+            <i class="fas fa-search"></i>
+            <span data-i18n="routes">Routes</span>
+        </div>
+        <div class="nav-tab" data-screen="tickets" onclick="navigateTo('tickets')">
+            <i class="fas fa-ticket-alt"></i>
+            <span data-i18n="tickets">Tickets</span>
+        </div>
+        <div class="nav-tab" data-screen="wallet" onclick="navigateTo('wallet')">
+            <i class="fas fa-wallet"></i>
+            <span data-i18n="wallet">Wallet</span>
+        </div>
+        <div class="nav-tab" data-screen="profile" onclick="navigateTo('profile')">
+            <i class="fas fa-user"></i>
+            <span data-i18n="profile">Profile</span>
+        </div>
+    </div>
+
+    <div class="home-indicator"></div>
+    <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+var currentScreen = 'home';
+var previousScreen = null;
+var currentLang = 'lo';
+var walletBalance = 125000;
+var map = null;
+var busMarkers = [];
+var activeFilter = null;
+
+// Tab order for determining slide direction
+var tabOrder = ['home','routes','tickets','wallet','profile'];
+
+// Extended i18n keys (add passenger-app-specific keys to shared i18n)
+var appI18n = {
+    en: Object.assign({}, i18n.en, {
+        whereGoing: 'Where are you going?',
+        arrivingAt: 'Arriving at Patuxai',
+        routesSub: 'All bus services in Vientiane',
+        pastTickets: 'Past Tickets',
+        payMethods: 'Payment Methods',
+        stationList: 'Stations',
+        help: 'Help',
+        about: 'About',
+        notifications: 'Notifications'
+    }),
+    lo: Object.assign({}, i18n.lo, {
+        whereGoing: 'ທ່ານຈະໄປໃສ?',
+        arrivingAt: 'ກຳລັງມາຮອດ ປະຕູໄຊ',
+        routesSub: 'ບໍລິການລົດເມທັງໝົດໃນວຽງຈັນ',
+        pastTickets: 'ປີ້ທີ່ຜ່ານມາ',
+        payMethods: 'ວິທີຈ່າຍເງິນ',
+        stationList: 'ສະຖານີ',
+        help: 'ຊ່ວຍເຫຼືອ',
+        about: 'ກ່ຽວກັບ',
+        notifications: 'ການແຈ້ງເຕືອນ'
+    })
+};
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function navigateTo(screen, param) {
+    if (screen === currentScreen) return;
+    var prevIdx = tabOrder.indexOf(currentScreen);
+    var nextIdx = tabOrder.indexOf(screen);
+
+    // route-detail is a special sub-screen, always slide right
+    var slideDir = 'right';
+    if (screen === 'route-detail') {
+        slideDir = 'right';
+    } else if (currentScreen === 'route-detail') {
+        slideDir = 'left';
+    } else if (prevIdx >= 0 && nextIdx >= 0) {
+        slideDir = nextIdx > prevIdx ? 'right' : 'left';
+    }
+
+    var oldScreen = document.getElementById('screen-' + currentScreen);
+    var newScreen = document.getElementById('screen-' + screen);
+    if (!newScreen) return;
+
+    previousScreen = currentScreen;
+
+    // Animate out
+    oldScreen.classList.add(slideDir === 'right' ? 'slide-out-left' : 'slide-out-right');
+
+    // Show & animate in
+    newScreen.style.display = 'flex';
+    newScreen.classList.add('active');
+    newScreen.classList.add(slideDir === 'right' ? 'slide-in-right' : 'slide-in-left');
+
+    setTimeout(function() {
+        oldScreen.classList.remove('active','slide-out-left','slide-out-right');
+        oldScreen.style.display = 'none';
+        newScreen.classList.remove('slide-in-right','slide-in-left');
+    }, 350);
+
+    currentScreen = screen;
+
+    // Update nav tabs
+    document.querySelectorAll('.nav-tab').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.screen === screen);
+    });
+
+    // Status bar color
+    var darkScreens = ['home'];
+    var sb = document.getElementById('statusBar');
+    if (darkScreens.includes(screen)) {
+        sb.classList.remove('dark');
+    } else {
+        sb.classList.remove('dark');
+    }
+
+    // Screen-specific init
+    if (screen === 'home' && map) {
+        setTimeout(function(){ map.invalidateSize(); }, 400);
+    }
+    if (screen === 'route-detail' && param) {
+        renderRouteDetail(param);
+    }
+    if (screen === 'tickets') {
+        renderTickets();
+    }
+}
+
+function goBack() {
+    if (previousScreen) {
+        navigateTo(previousScreen);
+    } else {
+        navigateTo('routes');
+    }
+}
+
+// ============================================================
+// MAP INITIALIZATION
+// ============================================================
+function initMap() {
+    map = L.map('home-map', {
+        center: [17.975, 102.625],
+        zoom: 13,
+        zoomControl: false,
+        attributionControl: false
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+    }).addTo(map);
+
+    // Add bus markers
+    addBusMarkers();
+
+    // Start simulated movement
+    setInterval(moveBuses, 3000);
+}
+
+function addBusMarkers() {
+    busMarkers.forEach(function(m){ map.removeLayer(m.marker); });
+    busMarkers = [];
+
+    VEHICLES.forEach(function(v) {
+        if (v.status !== 'active') return;
+        if (activeFilter && v.type !== activeFilter) return;
+
+        var color = getServiceColor(v.type);
+        var icon = L.divIcon({
+            html: '<div class="bus-marker" style="background:' + color + ';"><i class="fas fa-bus" style="font-size:14px;"></i></div>',
+            className: '',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        var marker = L.marker([v.lat, v.lng], { icon: icon }).addTo(map);
+        marker.bindPopup(
+            '<div class="bus-popup"><strong>' + v.id + '</strong>' +
+            '<div class="bp-meta">' +
+            '<i class="fas fa-user" style="margin-right:4px;"></i>' + v.passengers + ' passengers<br>' +
+            '<i class="fas fa-tachometer-alt" style="margin-right:4px;"></i>' + v.speed + ' km/h' +
+            '</div></div>'
+        );
+
+        busMarkers.push({ vehicle: v, marker: marker });
+    });
+}
+
+function moveBuses() {
+    busMarkers.forEach(function(bm) {
+        var v = bm.vehicle;
+        var dlat = (Math.random() - 0.5) * 0.002;
+        var dlng = (Math.random() - 0.5) * 0.002;
+        v.lat += dlat;
+        v.lng += dlng;
+        bm.marker.setLatLng([v.lat, v.lng]);
+    });
+}
+
+function filterMap(type) {
+    var pills = document.querySelectorAll('.pill');
+    pills.forEach(function(p){ p.classList.remove('active'); });
+
+    if (activeFilter === type) {
+        activeFilter = null;
+    } else {
+        activeFilter = type;
+        pills.forEach(function(p){
+            if ((type === 'BRT' && p.classList.contains('pill-brt')) ||
+                (type === 'Border' && p.classList.contains('pill-border')) ||
+                (type === 'Green' && p.classList.contains('pill-green'))) {
+                p.classList.add('active');
+            }
+        });
+    }
+    addBusMarkers();
+}
+
+// ============================================================
+// ROUTES
+// ============================================================
+function renderRoutes() {
+    var container = document.getElementById('routeCards');
+    var html = '';
+
+    // BRT
+    html += '<div class="section-title">BRT</div>';
+    html += '<div class="route-card" style="border-left-color:#ef4444;" onclick="navigateTo(\'route-detail\',\'BRT\')">';
+    html += '<div class="rc-icon" style="background:#ef4444;"><i class="fas fa-bolt"></i></div>';
+    html += '<div class="rc-info"><div class="rc-name">BRT Corridor</div>';
+    html += '<div class="rc-meta">27 stops &bull; Every 5 min &bull; 13.9 km</div></div>';
+    html += '<div class="rc-fare"><div class="amount">4-7K</div><div class="label">LAK</div></div>';
+    html += '<div class="rc-chevron"><i class="fas fa-chevron-right"></i></div></div>';
+
+    // Border
+    html += '<div class="section-title" data-i18n="borderBus">Border Bus</div>';
+    html += '<div class="route-card" style="border-left-color:#3b82f6;" onclick="navigateTo(\'route-detail\',\'Border\')">';
+    html += '<div class="rc-icon" style="background:#3b82f6;"><i class="fas fa-globe"></i></div>';
+    html += '<div class="rc-info"><div class="rc-name">Talat Sao - Friendship Bridge</div>';
+    html += '<div class="rc-meta">5 stops &bull; Every 30 min &bull; 24 km</div></div>';
+    html += '<div class="rc-fare"><div class="amount">30K</div><div class="label">LAK</div></div>';
+    html += '<div class="rc-chevron"><i class="fas fa-chevron-right"></i></div></div>';
+
+    // Green Bus Routes
+    html += '<div class="section-title" data-i18n="greenBus">Green Bus</div>';
+    GREEN_ROUTES.forEach(function(r) {
+        html += '<div class="route-card" style="border-left-color:' + r.color + ';" onclick="navigateTo(\'route-detail\',\'Green-' + r.id + '\')">';
+        html += '<div class="rc-icon" style="background:' + r.color + ';"><i class="fas fa-leaf"></i></div>';
+        html += '<div class="rc-info"><div class="rc-name">' + r.nameEn + '</div>';
+        html += '<div class="rc-meta">' + r.stops + ' stops &bull; Every 15 min</div></div>';
+        html += '<div class="rc-fare"><div class="amount">5-12K</div><div class="label">LAK</div></div>';
+        html += '<div class="rc-chevron"><i class="fas fa-chevron-right"></i></div></div>';
+    });
+
+    container.innerHTML = html;
+}
+
+function filterRoutes(query) {
+    var cards = document.querySelectorAll('.route-card');
+    var q = query.toLowerCase();
+    cards.forEach(function(c) {
+        var name = c.querySelector('.rc-name').textContent.toLowerCase();
+        c.style.display = (!q || name.indexOf(q) >= 0) ? 'flex' : 'none';
+    });
+}
+
+// ============================================================
+// ROUTE DETAIL
+// ============================================================
+function renderRouteDetail(type) {
+    var header = document.getElementById('rdHeader');
+    var title = document.getElementById('rdTitle');
+    var badge = document.getElementById('rdBadge');
+    var freq = document.getElementById('rdFreq');
+    var dist = document.getElementById('rdDist');
+    var fare = document.getElementById('rdFare');
+    var list = document.getElementById('stationList');
+
+    var stations = [];
+    var busPositions = [];
+    var routeColor = '#ef4444';
+
+    if (type === 'BRT') {
+        header.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+        title.textContent = 'BRT Corridor';
+        badge.textContent = '27 stops';
+        freq.textContent = '5 min';
+        dist.textContent = '13.9 km';
+        fare.textContent = '4-7K ₭';
+        routeColor = '#ef4444';
+        stations = BRT_STATIONS.map(function(s){ return { name: s.nameEn, nameLo: s.name, id: s.id }; });
+        // Mark some stations as having a bus nearby
+        busPositions = ['S03','S08','S14','S20'];
+    } else if (type === 'Border') {
+        header.style.background = 'linear-gradient(135deg,#2563eb,#1d4ed8)';
+        title.textContent = 'Border Bus';
+        badge.textContent = '5 stops';
+        freq.textContent = '30 min';
+        dist.textContent = '24 km';
+        fare.textContent = '30K ₭';
+        routeColor = '#3b82f6';
+        stations = [
+            { name: 'Talat Sao', nameLo: 'ຕະຫຼາດເຊົ້າ', id: 'B01' },
+            { name: 'Nong Chan', nameLo: 'ໜອງຈັນ', id: 'B02' },
+            { name: 'Dong Palane', nameLo: 'ດົງປ່າລານ', id: 'B03' },
+            { name: 'Tha Na Laeng', nameLo: 'ທ່ານາແລ້ງ', id: 'B04' },
+            { name: 'Friendship Bridge', nameLo: 'ຂົວມິດຕະພາບ', id: 'B05' }
+        ];
+        busPositions = ['B03'];
+    } else {
+        // Green bus route
+        var greenId = type.replace('Green-','');
+        var route = GREEN_ROUTES.find(function(r){ return r.id === greenId; }) || GREEN_ROUTES[0];
+        header.style.background = 'linear-gradient(135deg,#059669,#047857)';
+        title.textContent = route.nameEn;
+        badge.textContent = route.stops + ' stops';
+        freq.textContent = '15 min';
+        dist.textContent = (route.stops * 2.1).toFixed(1) + ' km';
+        fare.textContent = '5-12K ₭';
+        routeColor = '#10b981';
+        // Generate stations from the name
+        var parts = route.nameEn.split(': ')[1];
+        var endpoints = parts ? parts.split(' - ') : ['Start','End'];
+        stations = [{ name: endpoints[0], nameLo: '', id: 'GS01' }];
+        for (var si = 1; si < route.stops - 1; si++) {
+            stations.push({ name: 'Stop ' + (si + 1), nameLo: 'ຈຸດຈອດ ' + (si + 1), id: 'GS0' + (si + 1) });
+        }
+        stations.push({ name: endpoints[1] || 'End', nameLo: '', id: 'GS0' + route.stops });
+        busPositions = ['GS0' + Math.ceil(route.stops / 2)];
+    }
+
+    // Update station dot colors
+    var listHtml = '';
+    stations.forEach(function(s) {
+        var hasBus = busPositions.indexOf(s.id) >= 0;
+        listHtml += '<div class="station-item' + (hasBus ? ' has-bus' : '') + '">';
+        listHtml += '<div class="station-dot" style="border-color:' + (hasBus ? '#10b981' : routeColor) + ';' +
+                     (hasBus ? 'background:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,0.2);' : '') + '"></div>';
+        listHtml += '<div class="station-name">' + s.name + '</div>';
+        if (s.nameLo) listHtml += '<div class="station-name-lo">' + s.nameLo + '</div>';
+        if (hasBus) listHtml += '<div class="station-bus-tag"><i class="fas fa-bus" style="margin-right:4px;"></i>Bus arriving</div>';
+        listHtml += '</div>';
+    });
+    list.innerHTML = listHtml;
+}
+
+// ============================================================
+// TICKETS
+// ============================================================
+var qrGenerated = false;
+
+function renderTickets() {
+    // Find an active ticket
+    var active = RECENT_TICKETS.find(function(t){ return t.status === 'active'; });
+    var card = document.getElementById('activeTicketCard');
+
+    if (active) {
+        card.innerHTML =
+            '<div class="ticket-badge status-active"><i class="fas fa-circle" style="font-size:7px;margin-right:5px;animation:pulse 1.5s infinite;"></i> Active</div>' +
+            '<div class="qr-wrapper" id="qrContainer"></div>' +
+            '<div class="ticket-route">' + active.route + '</div>' +
+            '<div class="ticket-stations">' + active.from + ' <i class="fas fa-arrow-right" style="font-size:10px;margin:0 4px;"></i> ' + active.to + '</div>' +
+            '<div class="ticket-details">' +
+                '<div class="td-item"><div class="td-label">Ticket</div><div class="td-value">' + active.id.substring(0,16) + '</div></div>' +
+                '<div class="td-item"><div class="td-label">Time</div><div class="td-value">' + active.time + '</div></div>' +
+                '<div class="td-item"><div class="td-label">Fare</div><div class="td-value">' + formatNumber(active.fare) + ' ' + active.currency + '</div></div>' +
+            '</div>';
+
+        // Add pulse animation
+        if (!document.getElementById('pulse-style')) {
+            var style = document.createElement('style');
+            style.id = 'pulse-style';
+            style.textContent = '@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}';
+            document.head.appendChild(style);
+        }
+
+        // Generate QR
+        setTimeout(function() {
+            var container = document.getElementById('qrContainer');
+            if (container && container.children.length === 0) {
+                new QRCode(container, {
+                    text: JSON.stringify({ id: active.id, route: active.route, from: active.from, to: active.to, fare: active.fare, ts: Date.now() }),
+                    width: 160,
+                    height: 160,
+                    colorDark: '#1a1a1a',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }, 100);
+    }
+
+    // Past tickets
+    var past = RECENT_TICKETS.filter(function(t){ return t.status === 'used'; });
+    var pastHtml = '';
+    past.forEach(function(t) {
+        var color = getServiceColor(t.route);
+        pastHtml += '<div class="past-ticket">';
+        pastHtml += '<div class="pt-icon" style="background:' + color + ';"><i class="fas fa-' + (t.route === 'BRT' ? 'bolt' : t.route === 'Border' ? 'globe' : 'leaf') + '"></i></div>';
+        pastHtml += '<div class="pt-info"><div class="pt-route">' + t.from + ' → ' + t.to + '</div>';
+        pastHtml += '<div class="pt-meta">' + t.route + ' &bull; ' + t.time + '</div></div>';
+        pastHtml += '<div><div class="pt-fare">' + formatNumber(t.fare) + ' ' + t.currency + '</div>';
+        pastHtml += '<div class="pt-status" style="color:#9ca3af;">Used</div></div>';
+        pastHtml += '</div>';
+    });
+    document.getElementById('pastTicketsList').innerHTML = pastHtml;
+}
+
+// ============================================================
+// WALLET
+// ============================================================
+function renderWallet() {
+    document.getElementById('walletBalance').textContent = formatLAK(walletBalance);
+
+    var txHtml = '';
+    var transactions = [
+        { name: 'BRT Ticket', desc: 'Dongdok → Talat Sao', amount: -6000, type: 'debit', icon: 'fas fa-bus', iconBg: '#fef2f2', iconColor: '#ef4444', time: 'Today, 08:15' },
+        { name: 'Top Up', desc: 'BCEL OnePay', amount: 100000, type: 'credit', icon: 'fas fa-plus-circle', iconBg: '#ecfdf5', iconColor: '#10b981', time: 'Today, 07:30' },
+        { name: 'Green Bus', desc: 'Phonthan → Na Hai', amount: -8000, type: 'debit', icon: 'fas fa-leaf', iconBg: '#fef2f2', iconColor: '#ef4444', time: 'Yesterday, 17:45' },
+        { name: 'Border Bus', desc: 'Talat Sao → Bridge', amount: -30000, type: 'debit', icon: 'fas fa-globe', iconBg: '#fef2f2', iconColor: '#ef4444', time: 'Yesterday, 09:00' },
+        { name: 'Top Up', desc: 'Bank Transfer', amount: 200000, type: 'credit', icon: 'fas fa-plus-circle', iconBg: '#ecfdf5', iconColor: '#10b981', time: '14 Mar, 12:00' },
+        { name: 'BRT Ticket', desc: 'Patuxai → Phonphanao', amount: -4000, type: 'debit', icon: 'fas fa-bus', iconBg: '#fef2f2', iconColor: '#ef4444', time: '14 Mar, 08:30' },
+    ];
+
+    transactions.forEach(function(tx) {
+        txHtml += '<div class="tx-item">';
+        txHtml += '<div class="tx-icon" style="background:' + tx.iconBg + ';color:' + tx.iconColor + ';"><i class="' + tx.icon + '"></i></div>';
+        txHtml += '<div class="tx-info"><div class="tx-name">' + tx.name + '</div><div class="tx-date">' + tx.time + '</div></div>';
+        txHtml += '<div class="tx-amount ' + tx.type + '">' + (tx.type === 'credit' ? '+' : '-') + formatLAK(Math.abs(tx.amount)) + '</div>';
+        txHtml += '</div>';
+    });
+
+    document.getElementById('txHistory').innerHTML = txHtml;
+}
+
+function topUp(amount) {
+    walletBalance += amount;
+    document.getElementById('walletBalance').textContent = formatLAK(walletBalance);
+    showToast('Topped up ' + formatLAK(amount));
+    // Re-render wallet to add the transaction
+    setTimeout(renderWallet, 500);
+}
+
+// ============================================================
+// LANGUAGE / i18n
+// ============================================================
+function setLanguage(lang) {
+    currentLang = lang;
+    document.querySelectorAll('.lang-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.lang === lang);
+    });
+
+    var strings = appI18n[lang] || appI18n.en;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.dataset.i18n;
+        if (strings[key]) el.textContent = strings[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        var key = el.dataset['i18nPlaceholder'];
+        if (strings[key]) el.placeholder = strings[key];
+    });
+
+    showToast(lang === 'lo' ? 'ປ່ຽນເປັນພາສາລາວ' : 'Switched to English');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    renderRoutes();
+    renderTickets();
+    renderWallet();
+    setLanguage('lo');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIBMS PDA App - Gate Validator & Border Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="shared/data.js"></script>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: 'Inter', 'Noto Sans Lao', system-ui, sans-serif;
+    background: #e5e7eb;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   PHONE FRAME
+   ============================================================ */
+.phone-frame {
+    width: 390px;
+    height: 844px;
+    border: 10px solid #1a1a1a;
+    border-radius: 50px;
+    background: #0f172a;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 2px #333,
+        0 25px 60px rgba(0,0,0,0.4),
+        0 10px 30px rgba(0,0,0,0.3),
+        inset 0 0 3px rgba(255,255,255,0.05);
+}
+
+/* Dynamic Island */
+.dynamic-island {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 1000;
+}
+
+/* Status Bar */
+.status-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    padding: 14px 32px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 999;
+    background: #1a365d;
+    color: #fff;
+}
+.status-bar .time {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+}
+.status-bar .icons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 13px;
+}
+.status-bar .icons i { font-size: 14px; }
+.battery-icon {
+    width: 25px;
+    height: 12px;
+    border: 1.5px solid #fff;
+    border-radius: 3px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 1.5px;
+}
+.battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 5px;
+    background: #fff;
+    border-radius: 0 1px 1px 0;
+}
+.battery-fill {
+    width: 72%;
+    height: 100%;
+    background: #10b981;
+    border-radius: 1.5px;
+}
+
+/* Title Bar */
+.title-bar {
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: #1a365d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 998;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.title-bar h1 {
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+.title-bar .sync-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-left: 10px;
+    animation: syncPulse 2s ease-in-out infinite;
+}
+@keyframes syncPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Screen Container */
+.screen-container {
+    position: absolute;
+    top: 98px;
+    left: 0;
+    right: 0;
+    bottom: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #f1f5f9;
+    -webkit-overflow-scrolling: touch;
+}
+.screen-container::-webkit-scrollbar { width: 0; }
+
+/* Bottom Nav */
+.bottom-nav {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    padding: 8px 0 0;
+    z-index: 998;
+}
+.nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-tab i {
+    font-size: 22px;
+    color: #94a3b8;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+}
+.nav-tab span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+.nav-tab.active i { color: #1a365d; }
+.nav-tab.active span { color: #1a365d; }
+
+/* Home Indicator */
+.home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    z-index: 1001;
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+.screen {
+    display: none;
+    padding: 16px;
+    min-height: 100%;
+}
+.screen.active { display: block; }
+
+/* ============================================================
+   COMMON ELEMENTS
+   ============================================================ */
+.section-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1a365d;
+    margin-bottom: 4px;
+}
+.section-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+.card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* ============================================================
+   SCAN SCREEN
+   ============================================================ */
+.counter-card {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.counter-card .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+}
+.counter-card .count {
+    font-size: 36px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+}
+.counter-card .icon-circle {
+    width: 48px;
+    height: 48px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #fff;
+}
+
+.scan-btn {
+    width: 100%;
+    padding: 40px 20px;
+    border: 3px dashed #2b6cb0;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ebf4ff, #dbeafe);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.scan-btn:active {
+    transform: scale(0.97);
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+}
+.scan-btn i {
+    font-size: 64px;
+    color: #2b6cb0;
+}
+.scan-btn .scan-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a365d;
+}
+.scan-btn .scan-sublabel {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Recent scans list */
+.recent-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 8px;
+}
+.scan-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.scan-item:last-child { border-bottom: none; }
+.scan-item .scan-status {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.scan-item .scan-status.valid { background: #10b981; }
+.scan-item .scan-status.invalid { background: #ef4444; }
+.scan-item .scan-info { flex: 1; }
+.scan-item .scan-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.scan-item .scan-detail {
+    font-size: 11px;
+    color: #94a3b8;
+}
+.scan-item .scan-time {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* ============================================================
+   CAMERA OVERLAY (QR SCANNING)
+   ============================================================ */
+.camera-overlay {
+    display: none;
+    position: absolute;
+    top: 98px;
+    left: 0;
+    right: 0;
+    bottom: 100px;
+    background: #000;
+    z-index: 500;
+    overflow: hidden;
+}
+.camera-overlay.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+.camera-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+    opacity: 0.9;
+}
+.camera-noise {
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+    opacity: 0.3;
+}
+
+.viewfinder {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    z-index: 2;
+}
+.viewfinder-corner {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-color: #2b6cb0;
+    border-style: solid;
+    border-width: 0;
+}
+.viewfinder-corner.tl { top:0; left:0; border-top-width:4px; border-left-width:4px; border-radius:4px 0 0 0; }
+.viewfinder-corner.tr { top:0; right:0; border-top-width:4px; border-right-width:4px; border-radius:0 4px 0 0; }
+.viewfinder-corner.bl { bottom:0; left:0; border-bottom-width:4px; border-left-width:4px; border-radius:0 0 0 4px; }
+.viewfinder-corner.br { bottom:0; right:0; border-bottom-width:4px; border-right-width:4px; border-radius:0 0 4px 0; }
+
+.scan-line {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #2b6cb0, #60a5fa, #2b6cb0, transparent);
+    border-radius: 2px;
+    top: 10px;
+    animation: scanLineMove 1.5s ease-in-out infinite;
+    box-shadow: 0 0 12px rgba(43,108,176,0.6), 0 0 24px rgba(43,108,176,0.3);
+}
+@keyframes scanLineMove {
+    0%, 100% { top: 10px; }
+    50% { top: calc(100% - 13px); }
+}
+
+.camera-label {
+    position: relative;
+    z-index: 2;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 24px;
+    opacity: 0.9;
+}
+.camera-sublabel {
+    position: relative;
+    z-index: 2;
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    margin-top: 6px;
+}
+.camera-cancel {
+    position: relative;
+    z-index: 2;
+    margin-top: 30px;
+    padding: 10px 32px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 25px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.camera-cancel:active { background: rgba(255,255,255,0.25); }
+
+/* ============================================================
+   SCAN RESULT OVERLAY
+   ============================================================ */
+.scan-result-overlay {
+    display: none;
+    position: absolute;
+    top: 98px;
+    left: 0;
+    right: 0;
+    bottom: 100px;
+    z-index: 500;
+    padding: 20px;
+    overflow-y: auto;
+}
+.scan-result-overlay.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.scan-result-overlay.valid-bg { background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%); }
+.scan-result-overlay.invalid-bg { background: linear-gradient(180deg, #fef2f2 0%, #fecaca 100%); }
+
+.result-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: #fff;
+    margin-bottom: 16px;
+    animation: resultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes resultPop {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.result-icon.valid { background: #10b981; }
+.result-icon.invalid { background: #ef4444; }
+
+.result-stamp {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    animation: stampIn 0.3s ease-out 0.2s both;
+}
+@keyframes stampIn {
+    0% { transform: scale(2) rotate(-10deg); opacity: 0; }
+    100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+}
+.result-stamp.valid { color: #059669; }
+.result-stamp.invalid { color: #dc2626; }
+
+.result-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row .label { color: #64748b; font-weight: 500; }
+.result-row .value { color: #1e293b; font-weight: 600; text-align: right; }
+.result-reason {
+    font-size: 14px;
+    font-weight: 700;
+    color: #dc2626;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.scan-next-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.scan-next-btn:active { transform: scale(0.97); }
+.scan-next-btn.valid { background: #10b981; color: #fff; }
+.scan-next-btn.invalid { background: #ef4444; color: #fff; }
+
+/* ============================================================
+   BORDER SCREEN
+   ============================================================ */
+.passport-scan-btn {
+    width: 100%;
+    padding: 36px 20px;
+    border: 3px dashed #7c3aed;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.passport-scan-btn:active {
+    transform: scale(0.97);
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+}
+.passport-scan-btn i {
+    font-size: 56px;
+    color: #7c3aed;
+}
+.passport-scan-btn .scan-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a365d;
+}
+
+/* Passport Scanning Overlay */
+.passport-overlay {
+    display: none;
+    position: absolute;
+    top: 98px;
+    left: 0;
+    right: 0;
+    bottom: 100px;
+    background: #0f0f23;
+    z-index: 500;
+    overflow: hidden;
+}
+.passport-overlay.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+.passport-frame {
+    position: relative;
+    width: 260px;
+    height: 180px;
+    border: 3px solid rgba(124,58,237,0.6);
+    border-radius: 12px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.passport-frame i {
+    font-size: 60px;
+    color: rgba(124,58,237,0.3);
+}
+.passport-scan-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #7c3aed, #a78bfa, #7c3aed, transparent);
+    top: 0;
+    animation: passportScanMove 2s ease-in-out infinite;
+    box-shadow: 0 0 15px rgba(124,58,237,0.6);
+}
+@keyframes passportScanMove {
+    0%, 100% { top: 0; }
+    50% { top: calc(100% - 3px); }
+}
+
+/* Border Result */
+.border-result {
+    display: none;
+    padding: 16px;
+}
+.border-result.active { display: block; }
+
+.passenger-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+}
+.passenger-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 14px;
+}
+.passenger-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.passenger-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+}
+.passenger-nationality {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 2px;
+}
+.passenger-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.detail-item {
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+.detail-item .detail-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.detail-item .detail-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Verification checklist */
+.verification-list {
+    margin-bottom: 16px;
+}
+.verification-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 12px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+.verification-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+.verification-item:last-child { border-bottom: none; }
+.verification-check {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.verification-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Action buttons */
+.border-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.border-btn {
+    padding: 18px 16px;
+    border-radius: 14px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.border-btn:active { transform: scale(0.96); }
+.border-btn.approve { background: #10b981; color: #fff; }
+.border-btn.flag { background: #ef4444; color: #fff; }
+
+.scan-another-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.scan-another-btn:active { background: #f8fafc; }
+
+/* Green flash animation */
+.green-flash {
+    position: absolute;
+    inset: 0;
+    background: #10b981;
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: flashAnim 1s ease-out forwards;
+}
+@keyframes flashAnim {
+    0% { opacity: 1; }
+    30% { opacity: 1; }
+    100% { opacity: 0; pointer-events: none; }
+}
+.green-flash i {
+    font-size: 80px;
+    color: #fff;
+    animation: resultPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Flag dialog */
+.flag-dialog-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+}
+.flag-dialog-overlay.active { display: flex; }
+.flag-dialog {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+}
+.flag-dialog i {
+    font-size: 48px;
+    color: #ef4444;
+    margin-bottom: 12px;
+}
+.flag-dialog h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+}
+.flag-dialog p {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+.flag-dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.flag-dialog-actions button {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.flag-dialog-actions .cancel-flag {
+    background: #f1f5f9;
+    color: #64748b;
+}
+.flag-dialog-actions .confirm-flag {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* ============================================================
+   HISTORY SCREEN
+   ============================================================ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+.stat-card .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 4px;
+}
+.stat-card.total .stat-value { color: #1a365d; }
+.stat-card.valid .stat-value { color: #10b981; }
+.stat-card.invalid .stat-value { color: #ef4444; }
+.stat-card.flagged .stat-value { color: #f59e0b; }
+
+/* Filter tabs */
+.filter-tabs {
+    display: flex;
+    background: #e2e8f0;
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 12px;
+}
+.filter-tab {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+}
+.filter-tab.active {
+    background: #fff;
+    color: #1a365d;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* History items */
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.history-item .hi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.history-item .hi-icon.qr { background: #2b6cb0; }
+.history-item .hi-icon.passport { background: #7c3aed; }
+.history-item .hi-info { flex: 1; min-width: 0; }
+.history-item .hi-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.history-item .hi-detail {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+.history-item .hi-right {
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+.history-item .hi-time {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+.hi-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+.hi-badge.valid { background: #d1fae5; color: #059669; }
+.hi-badge.invalid { background: #fee2e2; color: #dc2626; }
+.hi-badge.flagged { background: #fef3c7; color: #d97706; }
+
+/* ============================================================
+   SETTINGS SCREEN
+   ============================================================ */
+.settings-group {
+    margin-bottom: 16px;
+}
+.settings-group-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+.settings-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row .sr-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.settings-row .sr-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+}
+.settings-row .sr-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.settings-row .sr-sublabel {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 1px;
+}
+.settings-row .sr-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+}
+.online-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.online-dot.green { background: #10b981; }
+.online-dot.red { background: #ef4444; }
+
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    background: #e2e8f0;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.3s;
+    flex-shrink: 0;
+}
+.toggle-switch.active { background: #10b981; }
+.toggle-switch .toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch.active .toggle-knob { transform: translateX(20px); }
+
+.settings-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+}
+.settings-btn:active { transform: scale(0.97); }
+.settings-btn.sync { background: #2b6cb0; color: #fff; }
+.settings-btn.end-shift { background: #ef4444; color: #fff; }
+
+/* Spinning sync icon */
+@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+.spinning { animation: spin 1s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+    <!-- Dynamic Island -->
+    <div class="dynamic-island"></div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+            <i class="fas fa-signal"></i>
+            <i class="fas fa-wifi"></i>
+            <span class="battery-icon"><span class="battery-fill"></span></span>
+        </span>
+    </div>
+
+    <!-- Title Bar -->
+    <div class="title-bar">
+        <h1><i class="fas fa-bus" style="margin-right:8px;font-size:15px;"></i>VIBMS PDA</h1>
+        <div class="sync-dot"></div>
+    </div>
+
+    <!-- Screen Container -->
+    <div class="screen-container">
+        <!-- SCAN SCREEN -->
+        <div id="screen-scan" class="screen active">
+            <div class="section-title">Gate Validation</div>
+            <div class="section-subtitle">
+                <i class="fas fa-map-marker-alt" style="color:#ef4444;"></i>
+                Station: ຕະຫຼາດເຊົ້າ (Talat Sao) &bull; Gate 2
+            </div>
+
+            <div class="counter-card">
+                <div>
+                    <div class="label">Validated Today</div>
+                    <div class="count" id="validatedCount">147</div>
+                </div>
+                <div class="icon-circle">
+                    <i class="fas fa-check-double"></i>
+                </div>
+            </div>
+
+            <div class="scan-btn" id="scanQrBtn" onclick="startQrScan()">
+                <i class="fas fa-qrcode"></i>
+                <span class="scan-label">Scan QR Ticket</span>
+                <span class="scan-sublabel">Tap to activate camera scanner</span>
+            </div>
+
+            <div class="card">
+                <div class="recent-header">Recent Scans</div>
+                <div id="recentScansList"></div>
+            </div>
+        </div>
+
+        <!-- BORDER SCREEN -->
+        <div id="screen-border" class="screen">
+            <div class="section-title">Border Verification</div>
+            <div class="section-subtitle">
+                <i class="fas fa-shield-halved" style="color:#7c3aed;"></i>
+                Friendship Bridge Checkpoint
+            </div>
+
+            <div id="borderScanView">
+                <div class="passport-scan-btn" onclick="startPassportScan()">
+                    <i class="fas fa-passport"></i>
+                    <span class="scan-label">Scan Passport</span>
+                    <span class="scan-sublabel">Place passport on scanner</span>
+                </div>
+
+                <div class="card">
+                    <div class="recent-header">Today's Border Stats</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                        <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:10px;">
+                            <div style="font-size:24px;font-weight:800;color:#059669;">42</div>
+                            <div style="font-size:10px;font-weight:600;color:#64748b;">Approved</div>
+                        </div>
+                        <div style="text-align:center;padding:10px;background:#fef2f2;border-radius:10px;">
+                            <div style="font-size:24px;font-weight:800;color:#dc2626;">3</div>
+                            <div style="font-size:10px;font-weight:600;color:#64748b;">Rejected</div>
+                        </div>
+                        <div style="text-align:center;padding:10px;background:#fffbeb;border-radius:10px;">
+                            <div style="font-size:24px;font-weight:800;color:#d97706;">2</div>
+                            <div style="font-size:10px;font-weight:600;color:#64748b;">Flagged</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="borderResultView" class="border-result">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+
+        <!-- HISTORY SCREEN -->
+        <div id="screen-history" class="screen">
+            <div class="section-title">History</div>
+            <div class="section-subtitle">Today's validation activity</div>
+
+            <div class="stats-grid">
+                <div class="stat-card total">
+                    <div class="stat-value">147</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card valid">
+                    <div class="stat-value">138</div>
+                    <div class="stat-label">Valid</div>
+                </div>
+                <div class="stat-card invalid">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">Invalid</div>
+                </div>
+                <div class="stat-card flagged">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Flagged</div>
+                </div>
+            </div>
+
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all" onclick="filterHistory('all',this)">All</button>
+                <button class="filter-tab" data-filter="valid" onclick="filterHistory('valid',this)">Valid</button>
+                <button class="filter-tab" data-filter="invalid" onclick="filterHistory('invalid',this)">Invalid</button>
+                <button class="filter-tab" data-filter="flagged" onclick="filterHistory('flagged',this)">Flagged</button>
+            </div>
+
+            <div id="historyList"></div>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div id="screen-settings" class="screen">
+            <div class="section-title">Settings</div>
+            <div class="section-subtitle">Device configuration & status</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Device Info</div>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#2b6cb0;"><i class="fas fa-tablet-screen-button"></i></div>
+                            <div>
+                                <div class="sr-label">Device ID</div>
+                                <div class="sr-sublabel">Model: Zebra TC57</div>
+                            </div>
+                        </div>
+                        <div class="sr-value">PDA-001</div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#64748b;"><i class="fas fa-microchip"></i></div>
+                            <div>
+                                <div class="sr-label">Firmware</div>
+                                <div class="sr-sublabel">VIBMS PDA OS</div>
+                            </div>
+                        </div>
+                        <div class="sr-value">v2.1</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Assignment</div>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#10b981;"><i class="fas fa-location-dot"></i></div>
+                            <div>
+                                <div class="sr-label">Station</div>
+                                <div class="sr-sublabel">ຕະຫຼາດເຊົ້າ</div>
+                            </div>
+                        </div>
+                        <div class="sr-value">Talat Sao</div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#f59e0b;"><i class="fas fa-door-open"></i></div>
+                            <div>
+                                <div class="sr-label">Gate</div>
+                            </div>
+                        </div>
+                        <div class="sr-value">Gate 2</div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#7c3aed;"><i class="fas fa-clock"></i></div>
+                            <div>
+                                <div class="sr-label">Shift</div>
+                                <div class="sr-sublabel">Currently 09:41</div>
+                            </div>
+                        </div>
+                        <div class="sr-value">07:00 - 15:00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Connectivity</div>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#10b981;"><i class="fas fa-wifi"></i></div>
+                            <div>
+                                <div class="sr-label">Network Status</div>
+                                <div class="sr-sublabel"><span class="online-dot green"></span>Online</div>
+                            </div>
+                        </div>
+                        <div class="sr-value" style="color:#10b981;">Connected</div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div class="sr-icon" style="background:#2b6cb0;"><i class="fas fa-arrows-rotate"></i></div>
+                            <div>
+                                <div class="sr-label">Sync Status</div>
+                                <div class="sr-sublabel"><span class="online-dot green"></span>Last sync: 2 min ago</div>
+                            </div>
+                        </div>
+                        <div class="sr-value" id="syncTimeDisplay">09:39</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="settings-btn sync" onclick="manualSync()">
+                <i class="fas fa-arrows-rotate" id="syncIcon" style="margin-right:8px;"></i>Manual Sync
+            </button>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Mode</div>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="sr-left">
+                            <div>
+                                <div class="sr-label" id="modeLabel">Gate Validator</div>
+                                <div class="sr-sublabel">Switch to Border Agent mode</div>
+                            </div>
+                        </div>
+                        <div class="toggle-switch active" id="modeToggle" onclick="toggleMode()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="settings-btn end-shift" onclick="endShift()">
+                <i class="fas fa-right-from-bracket" style="margin-right:8px;"></i>End Shift
+            </button>
+
+            <div style="text-align:center;padding:12px 0 20px;">
+                <div style="font-size:11px;color:#94a3b8;">VIBMS PDA App v2.1.0</div>
+                <div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Operator: ກ. ພູທອນ ວົງສາ (K. Phouthone Vongsa)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Overlay (QR Scan) -->
+    <div class="camera-overlay" id="cameraOverlay">
+        <div class="camera-bg"></div>
+        <div class="camera-noise"></div>
+        <div class="viewfinder">
+            <div class="viewfinder-corner tl"></div>
+            <div class="viewfinder-corner tr"></div>
+            <div class="viewfinder-corner bl"></div>
+            <div class="viewfinder-corner br"></div>
+            <div class="scan-line"></div>
+        </div>
+        <div class="camera-label">Scanning QR Code...</div>
+        <div class="camera-sublabel">Align ticket QR within the frame</div>
+        <button class="camera-cancel" onclick="cancelQrScan()">Cancel</button>
+    </div>
+
+    <!-- Scan Result Overlay -->
+    <div class="scan-result-overlay" id="scanResultOverlay">
+        <!-- Filled dynamically -->
+    </div>
+
+    <!-- Passport Scanning Overlay -->
+    <div class="passport-overlay" id="passportOverlay">
+        <div class="camera-bg"></div>
+        <div class="camera-noise"></div>
+        <div class="passport-frame">
+            <i class="fas fa-passport"></i>
+            <div class="passport-scan-line"></div>
+        </div>
+        <div class="camera-label" style="position:relative;z-index:2;color:#fff;">Reading Passport MRZ...</div>
+        <div class="camera-sublabel" style="position:relative;z-index:2;">Processing biometric data</div>
+        <button class="camera-cancel" onclick="cancelPassportScan()" style="position:relative;z-index:2;">Cancel</button>
+    </div>
+
+    <!-- Flag Dialog -->
+    <div class="flag-dialog-overlay" id="flagDialogOverlay">
+        <div class="flag-dialog">
+            <i class="fas fa-triangle-exclamation"></i>
+            <h3>Flag Passenger?</h3>
+            <p id="flagDialogText">This will flag the passenger for secondary inspection and notify border control supervisors.</p>
+            <div class="flag-dialog-actions">
+                <button class="cancel-flag" onclick="closeFlagDialog()">Cancel</button>
+                <button class="confirm-flag" onclick="confirmFlag()">Confirm Flag</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Green Flash (approval) -->
+    <div id="greenFlash" style="display:none;"></div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-tab active" onclick="switchTab('scan', this)">
+            <i class="fas fa-qrcode"></i>
+            <span>Scan</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('border', this)">
+            <i class="fas fa-passport"></i>
+            <span>Border</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('history', this)">
+            <i class="fas fa-list"></i>
+            <span>History</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('settings', this)">
+            <i class="fas fa-gear"></i>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <!-- Home Indicator -->
+    <div class="home-indicator"></div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+var validatedCount = 147;
+var recentScans = [];
+var historyItems = [];
+var currentBorderPassenger = null;
+var passportScanTimeout = null;
+var qrScanTimeout = null;
+
+// Passenger names for QR scans
+var QR_PASSENGERS = [
+    {name:'ນ. ແກ້ວ ພົມມະວົງ', route:'BRT: Dongdok → Talat Sao'},
+    {name:'ສ. ພອນ ໄຊຍະວົງ', route:'BRT: Patuxai → Phonphanao'},
+    {name:'ກ. ວິໄລ ສີສະຫວາດ', route:'Green: Phonthan → Na Hai'},
+    {name:'ບ. ສີລິ ວົງພະຈັນ', route:'BRT: Stadium → Wat Tai'},
+    {name:'ດ. ວິລະ ບຸນມີ', route:'BRT: That Luang → Talat Sao'},
+    {name:'ທ. ສົມພອນ ແກ້ວ', route:'BRT: Km 6 → Chommany'},
+    {name:'ນ. ວັນນະ ພູທອນ', route:'Green: Talat Sao → Ban Kao'},
+    {name:'ປ. ຄຳແພງ ສີລິ', route:'BRT: Nong Bon → Talat Sao'},
+    {name:'ວ. ແສງ ວົງສາ', route:'BRT: Phonphanao → Lane Xang'},
+    {name:'ສ. ບຸນທຽງ ພອນ', route:'Border: Talat Sao → Bridge'}
+];
+
+var INVALID_REASONS = ['Ticket Expired', 'Wrong Route', 'Already Used', 'Invalid QR Format'];
+
+var NATIONALITY_FLAGS = {
+    'USA': '🇺🇸', 'Japan': '🇯🇵', 'Thailand': '🇹🇭', 'China': '🇨🇳',
+    'South Korea': '🇰🇷', 'France': '🇫🇷', 'Laos': '🇱🇦'
+};
+
+// Pre-populate some recent scans
+var preScanTimes = ['09:38','09:35','09:31','09:27','09:22'];
+for (var i = 0; i < 5; i++) {
+    var isValid = Math.random() > 0.15;
+    recentScans.push({
+        time: preScanTimes[i],
+        name: QR_PASSENGERS[randomBetween(0, QR_PASSENGERS.length - 1)].name,
+        valid: isValid
+    });
+}
+
+// Pre-populate history
+var historyTimes = ['09:38','09:35','09:33','09:31','09:28','09:27','09:24','09:22','09:18','09:15','09:12','09:08','09:05','09:01','08:57','08:53','08:49','08:45','08:40','08:35'];
+for (var h = 0; h < historyTimes.length; h++) {
+    var hType = Math.random() > 0.7 ? 'passport' : 'qr';
+    var hStatus;
+    var r = Math.random();
+    if (r < 0.07) hStatus = 'flagged';
+    else if (r < 0.15) hStatus = 'invalid';
+    else hStatus = 'valid';
+
+    var hName;
+    if (hType === 'passport') {
+        var bp = BORDER_PASSENGERS[randomBetween(0, BORDER_PASSENGERS.length - 1)];
+        hName = bp.name;
+    } else {
+        hName = QR_PASSENGERS[randomBetween(0, QR_PASSENGERS.length - 1)].name;
+    }
+
+    historyItems.push({
+        time: historyTimes[h],
+        name: hName,
+        type: hType,
+        status: hStatus
+    });
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tab, el) {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+    document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+
+    document.getElementById('screen-' + tab).classList.add('active');
+    el.classList.add('active');
+
+    // Scroll to top
+    document.querySelector('.screen-container').scrollTop = 0;
+
+    // Render lists when switching
+    if (tab === 'history') renderHistoryList('all');
+}
+
+// ============================================================
+// QR SCANNING
+// ============================================================
+function startQrScan() {
+    var overlay = document.getElementById('cameraOverlay');
+    overlay.classList.add('active');
+
+    qrScanTimeout = setTimeout(function() {
+        overlay.classList.remove('active');
+        showQrResult();
+    }, 1500);
+}
+
+function cancelQrScan() {
+    clearTimeout(qrScanTimeout);
+    document.getElementById('cameraOverlay').classList.remove('active');
+}
+
+function showQrResult() {
+    var isValid = Math.random() < 0.8;
+    var passenger = QR_PASSENGERS[randomBetween(0, QR_PASSENGERS.length - 1)];
+    var overlay = document.getElementById('scanResultOverlay');
+
+    var now = new Date();
+    var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+    var html = '';
+    if (isValid) {
+        overlay.className = 'scan-result-overlay active valid-bg';
+        html += '<div class="result-icon valid"><i class="fas fa-check"></i></div>';
+        html += '<div class="result-stamp valid">APPROVED</div>';
+        html += '<div class="result-card">';
+        html += '<div class="result-row"><span class="label">Passenger</span><span class="value">' + passenger.name + '</span></div>';
+        html += '<div class="result-row"><span class="label">Route</span><span class="value">' + passenger.route + '</span></div>';
+        html += '<div class="result-row"><span class="label">Boarding Time</span><span class="value">' + timeStr + '</span></div>';
+        html += '<div class="result-row"><span class="label">Ticket ID</span><span class="value" style="font-size:11px;">' + generateTicketId() + '</span></div>';
+        html += '</div>';
+        html += '<button class="scan-next-btn valid" onclick="resetQrScan()"><i class="fas fa-qrcode" style="margin-right:8px;"></i>Scan Next</button>';
+
+        // Update counter
+        validatedCount++;
+        document.getElementById('validatedCount').textContent = validatedCount;
+    } else {
+        var reason = INVALID_REASONS[randomBetween(0, INVALID_REASONS.length - 1)];
+        overlay.className = 'scan-result-overlay active invalid-bg';
+        html += '<div class="result-icon invalid"><i class="fas fa-xmark"></i></div>';
+        html += '<div class="result-stamp invalid">REJECTED</div>';
+        html += '<div class="result-reason"><i class="fas fa-circle-exclamation" style="margin-right:6px;"></i>' + reason + '</div>';
+        html += '<div class="result-card">';
+        html += '<div class="result-row"><span class="label">Passenger</span><span class="value">' + passenger.name + '</span></div>';
+        html += '<div class="result-row"><span class="label">Route</span><span class="value">' + passenger.route + '</span></div>';
+        html += '<div class="result-row"><span class="label">Scan Time</span><span class="value">' + timeStr + '</span></div>';
+        html += '<div class="result-row"><span class="label">Reason</span><span class="value" style="color:#dc2626;">' + reason + '</span></div>';
+        html += '</div>';
+        html += '<button class="scan-next-btn invalid" onclick="resetQrScan()"><i class="fas fa-qrcode" style="margin-right:8px;"></i>Scan Next</button>';
+    }
+
+    overlay.innerHTML = html;
+
+    // Add to recent scans
+    recentScans.unshift({
+        time: timeStr,
+        name: passenger.name,
+        valid: isValid
+    });
+    if (recentScans.length > 5) recentScans = recentScans.slice(0, 5);
+    renderRecentScans();
+
+    // Add to history
+    historyItems.unshift({
+        time: timeStr,
+        name: passenger.name,
+        type: 'qr',
+        status: isValid ? 'valid' : 'invalid'
+    });
+}
+
+function resetQrScan() {
+    document.getElementById('scanResultOverlay').classList.remove('active');
+    document.getElementById('scanResultOverlay').className = 'scan-result-overlay';
+}
+
+function renderRecentScans() {
+    var container = document.getElementById('recentScansList');
+    var html = '';
+    recentScans.forEach(function(scan) {
+        html += '<div class="scan-item">';
+        html += '<div class="scan-status ' + (scan.valid ? 'valid' : 'invalid') + '">';
+        html += '<i class="fas fa-' + (scan.valid ? 'check' : 'xmark') + '"></i>';
+        html += '</div>';
+        html += '<div class="scan-info">';
+        html += '<div class="scan-name">' + scan.name + '</div>';
+        html += '<div class="scan-detail">' + (scan.valid ? 'Valid ticket' : 'Invalid ticket') + '</div>';
+        html += '</div>';
+        html += '<div class="scan-time">' + scan.time + '</div>';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+// ============================================================
+// PASSPORT / BORDER SCANNING
+// ============================================================
+function startPassportScan() {
+    var overlay = document.getElementById('passportOverlay');
+    overlay.classList.add('active');
+
+    passportScanTimeout = setTimeout(function() {
+        overlay.classList.remove('active');
+        showBorderResult();
+    }, 2000);
+}
+
+function cancelPassportScan() {
+    clearTimeout(passportScanTimeout);
+    document.getElementById('passportOverlay').classList.remove('active');
+}
+
+function showBorderResult() {
+    var passenger = BORDER_PASSENGERS[randomBetween(0, BORDER_PASSENGERS.length - 1)];
+    currentBorderPassenger = passenger;
+
+    document.getElementById('borderScanView').style.display = 'none';
+    var resultView = document.getElementById('borderResultView');
+    resultView.classList.add('active');
+
+    var flag = NATIONALITY_FLAGS[passenger.nationality] || '🏳️';
+    var initials = passenger.name.split(' ').map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
+
+    var html = '';
+    html += '<div class="passenger-card">';
+    html += '<div class="passenger-header">';
+    html += '<div class="passenger-avatar">' + initials + '</div>';
+    html += '<div>';
+    html += '<div class="passenger-name">' + passenger.name + '</div>';
+    html += '<div class="passenger-nationality">' + flag + ' ' + passenger.nationality + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="passenger-details">';
+    html += '<div class="detail-item"><div class="detail-label">Passport #</div><div class="detail-value">' + passenger.passport + '</div></div>';
+    html += '<div class="detail-item"><div class="detail-label">Visa Type</div><div class="detail-value">' + passenger.visa + '</div></div>';
+    html += '<div class="detail-item"><div class="detail-label">Gender</div><div class="detail-value">' + (passenger.gender === 'M' ? 'Male' : 'Female') + '</div></div>';
+    html += '<div class="detail-item"><div class="detail-label">Passenger ID</div><div class="detail-value">' + passenger.id + '</div></div>';
+    html += '</div>';
+
+    html += '<div class="verification-list" id="verificationList">';
+    html += '<div class="verification-item" data-idx="0"><div class="verification-check"><i class="fas fa-check"></i></div><div class="verification-text">Passport Valid</div></div>';
+    html += '<div class="verification-item" data-idx="1"><div class="verification-check"><i class="fas fa-check"></i></div><div class="verification-text">Visa Valid</div></div>';
+    html += '<div class="verification-item" data-idx="2"><div class="verification-check"><i class="fas fa-check"></i></div><div class="verification-text">Ticket Matched</div></div>';
+    html += '<div class="verification-item" data-idx="3"><div class="verification-check"><i class="fas fa-check"></i></div><div class="verification-text">Not on Watchlist</div></div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="border-actions">';
+    html += '<button class="border-btn approve" onclick="approveBorder()"><i class="fas fa-check"></i> Approve</button>';
+    html += '<button class="border-btn flag" onclick="openFlagDialog()"><i class="fas fa-triangle-exclamation"></i> Flag</button>';
+    html += '</div>';
+
+    html += '<button class="scan-another-btn" onclick="resetBorderScan()"><i class="fas fa-passport" style="margin-right:6px;"></i>Scan Another Passport</button>';
+
+    resultView.innerHTML = html;
+
+    // Animate verification items one by one
+    var items = document.querySelectorAll('#verificationList .verification-item');
+    items.forEach(function(item, idx) {
+        setTimeout(function() {
+            item.classList.add('visible');
+        }, 400 + (idx * 450));
+    });
+}
+
+function approveBorder() {
+    // Green flash
+    var flash = document.getElementById('greenFlash');
+    flash.style.display = 'flex';
+    flash.className = 'green-flash';
+    flash.innerHTML = '<i class="fas fa-circle-check"></i>';
+
+    // Add to history
+    if (currentBorderPassenger) {
+        var now = new Date();
+        var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        historyItems.unshift({
+            time: timeStr,
+            name: currentBorderPassenger.name,
+            type: 'passport',
+            status: 'valid'
+        });
+    }
+
+    setTimeout(function() {
+        flash.style.display = 'none';
+        resetBorderScan();
+    }, 1100);
+}
+
+function openFlagDialog() {
+    var name = currentBorderPassenger ? currentBorderPassenger.name : 'this passenger';
+    document.getElementById('flagDialogText').textContent = 'This will flag ' + name + ' for secondary inspection and notify border control supervisors.';
+    document.getElementById('flagDialogOverlay').classList.add('active');
+}
+
+function closeFlagDialog() {
+    document.getElementById('flagDialogOverlay').classList.remove('active');
+}
+
+function confirmFlag() {
+    closeFlagDialog();
+
+    // Add to history
+    if (currentBorderPassenger) {
+        var now = new Date();
+        var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        historyItems.unshift({
+            time: timeStr,
+            name: currentBorderPassenger.name,
+            type: 'passport',
+            status: 'flagged'
+        });
+    }
+
+    // Show a brief red flash-like indication using the result overlay
+    var resultView = document.getElementById('borderResultView');
+    resultView.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+        '<div style="width:80px;height:80px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:resultPop 0.4s cubic-bezier(0.34,1.56,0.64,1);">' +
+        '<i class="fas fa-flag" style="font-size:36px;color:#fff;"></i></div>' +
+        '<div style="font-size:22px;font-weight:800;color:#dc2626;margin-bottom:8px;">FLAGGED</div>' +
+        '<div style="font-size:13px;color:#64748b;margin-bottom:24px;">Passenger flagged for secondary inspection.<br>Supervisor has been notified.</div>' +
+        '<button class="scan-another-btn" onclick="resetBorderScan()"><i class="fas fa-passport" style="margin-right:6px;"></i>Scan Next Passport</button>' +
+        '</div>';
+}
+
+function resetBorderScan() {
+    document.getElementById('borderScanView').style.display = 'block';
+    var resultView = document.getElementById('borderResultView');
+    resultView.classList.remove('active');
+    resultView.innerHTML = '';
+    currentBorderPassenger = null;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistoryList(filter) {
+    var container = document.getElementById('historyList');
+    var html = '';
+    var filtered = historyItems;
+    if (filter !== 'all') {
+        filtered = historyItems.filter(function(item) { return item.status === filter; });
+    }
+
+    if (filtered.length === 0) {
+        html = '<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;">No records found</div>';
+    } else {
+        filtered.forEach(function(item) {
+            html += '<div class="history-item">';
+            html += '<div class="hi-icon ' + item.type + '">';
+            html += '<i class="fas fa-' + (item.type === 'qr' ? 'qrcode' : 'passport') + '"></i>';
+            html += '</div>';
+            html += '<div class="hi-info">';
+            html += '<div class="hi-name">' + item.name + '</div>';
+            html += '<div class="hi-detail">' + (item.type === 'qr' ? 'QR Ticket' : 'Passport') + ' Scan</div>';
+            html += '</div>';
+            html += '<div class="hi-right">';
+            html += '<div class="hi-time">' + item.time + '</div>';
+            html += '<span class="hi-badge ' + item.status + '">' + item.status + '</span>';
+            html += '</div>';
+            html += '</div>';
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+function filterHistory(filter, el) {
+    document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+    el.classList.add('active');
+    renderHistoryList(filter);
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function manualSync() {
+    var icon = document.getElementById('syncIcon');
+    icon.classList.add('spinning');
+
+    setTimeout(function() {
+        icon.classList.remove('spinning');
+        var now = new Date();
+        document.getElementById('syncTimeDisplay').textContent =
+            String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    }, 1500);
+}
+
+function toggleMode() {
+    var toggle = document.getElementById('modeToggle');
+    var label = document.getElementById('modeLabel');
+    toggle.classList.toggle('active');
+    if (toggle.classList.contains('active')) {
+        label.textContent = 'Gate Validator';
+        label.nextElementSibling.textContent = 'Switch to Border Agent mode';
+    } else {
+        label.textContent = 'Border Agent';
+        label.nextElementSibling.textContent = 'Switch to Gate Validator mode';
+    }
+}
+
+function endShift() {
+    if (confirm('End current shift? This will log you out of the PDA.')) {
+        // Show a brief message
+        document.querySelector('.screen-container').innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:40px;">' +
+            '<i class="fas fa-circle-check" style="font-size:64px;color:#10b981;margin-bottom:16px;"></i>' +
+            '<div style="font-size:20px;font-weight:800;color:#1a365d;margin-bottom:8px;">Shift Ended</div>' +
+            '<div style="font-size:13px;color:#64748b;text-align:center;line-height:1.5;">Your shift data has been synced.<br>Please return the PDA to the station office.</div>' +
+            '<div style="margin-top:24px;padding:16px;background:#fff;border-radius:14px;width:100%;max-width:280px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
+            '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px;font-weight:600;">Shift Summary</div>' +
+            '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:#64748b;">Total Scans</span><span style="font-weight:700;color:#1e293b;">' + validatedCount + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:#64748b;">Duration</span><span style="font-weight:700;color:#1e293b;">2h 41m</span></div>' +
+            '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:#64748b;">Operator</span><span style="font-weight:700;color:#1e293b;">K. Phouthone</span></div>' +
+            '</div>' +
+            '</div>';
+    }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderRecentScans();
+renderHistoryList('all');
+</script>
+</body>
+</html>

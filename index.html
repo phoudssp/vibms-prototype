@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIBMS - Prototype Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Lao:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+.header{text-align:center;margin-bottom:48px;}
+.badge{display:inline-block;background:#2b6cb0;color:#fff;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:7px 18px;border-radius:4px;margin-bottom:16px;}
+h1{font-size:36px;font-weight:800;color:#1a202c;margin-bottom:8px;}
+.subtitle{font-size:15px;color:#718096;max-width:500px;margin:0 auto;line-height:1.6;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:880px;width:100%;}
+.card{background:#fff;border-radius:20px;padding:36px 32px;border:1px solid #e2e8f0;transition:all .3s ease;cursor:pointer;text-decoration:none;color:inherit;position:relative;overflow:hidden;}
+.card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,0.1);border-color:transparent;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:20px 20px 0 0;}
+.card-admin::before{background:linear-gradient(90deg,#1a365d,#2b6cb0);}
+.card-staff::before{background:linear-gradient(90deg,#d97706,#f59e0b);}
+.card-pda::before{background:linear-gradient(90deg,#059669,#10b981);}
+.card-passenger::before{background:linear-gradient(90deg,#7c3aed,#a78bfa);}
+.card-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:20px;}
+.card-admin .card-icon{background:#ebf4ff;color:#2b6cb0;}
+.card-staff .card-icon{background:#fef3c7;color:#d97706;}
+.card-pda .card-icon{background:#d1fae5;color:#059669;}
+.card-passenger .card-icon{background:#ede9fe;color:#7c3aed;}
+.card h3{font-size:18px;font-weight:700;color:#1a202c;margin-bottom:6px;}
+.card p{font-size:13px;color:#718096;line-height:1.6;margin-bottom:20px;}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;}
+.tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#f0f2f5;color:#4a5568;}
+.launch-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;border:none;cursor:pointer;transition:all .2s;}
+.card-admin .launch-btn{background:#2b6cb0;}
+.card-staff .launch-btn{background:#d97706;}
+.card-pda .launch-btn{background:#059669;}
+.card-passenger .launch-btn{background:#7c3aed;}
+.launch-btn:hover{opacity:.9;transform:scale(1.02);}
+.footer{margin-top:48px;text-align:center;font-size:12px;color:#a0aec0;}
+.device-badge{position:absolute;top:16px;right:16px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.device-web{background:#ebf4ff;color:#2b6cb0;}
+.device-mobile{background:#ede9fe;color:#7c3aed;}
+.note{margin-top:32px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 24px;max-width:880px;width:100%;font-size:13px;color:#4a5568;line-height:1.7;}
+.note strong{color:#1a202c;}
+.note code{background:#f0f2f5;padding:2px 8px;border-radius:4px;font-size:12px;font-family:'SF Mono',monospace;}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="badge">Prototype Demo</div>
+    <h1>VIBMS</h1>
+    <p class="subtitle">Vientiane Integrated Bus Management System<br>ລະບົບຄຸ້ມຄອງລົດເມແບບເຊື່ອມໂຍງນະຄອນຫຼວງວຽງຈັນ</p>
+</div>
+
+<div class="grid">
+    <a href="admin-dashboard.html" class="card card-admin">
+        <span class="device-badge device-web">Web App</span>
+        <div class="card-icon">📊</div>
+        <h3>Admin Dashboard</h3>
+        <p>Fleet management, live GPS map, KPI dashboard, revenue analytics, and user management.</p>
+        <div class="card-tags">
+            <span class="tag">Live Map</span>
+            <span class="tag">Charts</span>
+            <span class="tag">Fleet</span>
+            <span class="tag">Revenue</span>
+        </div>
+        <button class="launch-btn">Launch Dashboard →</button>
+    </a>
+
+    <a href="staff-portal.html" class="card card-staff">
+        <span class="device-badge device-web">Web App</span>
+        <div class="card-icon">🎫</div>
+        <h3>Staff Portal</h3>
+        <p>Ticket counter, passport scanning, border bus booking, and shift management for station staff.</p>
+        <div class="card-tags">
+            <span class="tag">Ticketing</span>
+            <span class="tag">Passport Scan</span>
+            <span class="tag">Multi-Currency</span>
+        </div>
+        <button class="launch-btn">Launch Portal →</button>
+    </a>
+
+    <a href="pda-app.html" class="card card-pda">
+        <span class="device-badge device-mobile">Mobile PDA</span>
+        <div class="card-icon">📱</div>
+        <h3>PDA App</h3>
+        <p>Handheld device for gate QR validation, border passport verification, and boarding control.</p>
+        <div class="card-tags">
+            <span class="tag">QR Scan</span>
+            <span class="tag">Gate Control</span>
+            <span class="tag">Border Check</span>
+        </div>
+        <button class="launch-btn">Launch PDA →</button>
+    </a>
+
+    <a href="passenger-app.html" class="card card-passenger">
+        <span class="device-badge device-mobile">Mobile App</span>
+        <div class="card-icon">🚌</div>
+        <h3>Passenger App</h3>
+        <p>Real-time bus tracking, digital QR tickets, e-wallet payments, and route planning for passengers.</p>
+        <div class="card-tags">
+            <span class="tag">Live Tracking</span>
+            <span class="tag">QR Tickets</span>
+            <span class="tag">E-Wallet</span>
+            <span class="tag">Multi-Language</span>
+        </div>
+        <button class="launch-btn">Launch App →</button>
+    </a>
+</div>
+
+<div class="note">
+    <strong>📋 How to run:</strong> Open a terminal in this folder and run <code>python3 -m http.server 8080</code>, then visit <code>http://localhost:8080/prototype/</code> in your browser. The map features require HTTP (not file://).
+</div>
+
+<div class="footer">
+    VIBMS Prototype v1.0 &bull; March 2026 &bull; Vientiane Integrated Bus Management System
+</div>
+
+</body>
+</html>
