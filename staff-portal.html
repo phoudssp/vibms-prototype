@@ -267,11 +267,21 @@ body{font-family:'Inter','Noto Sans Lao',sans-serif;background:#f0f4f8;color:#1a
       <div class="form-row">
         <div class="form-group">
           <label>Origin</label>
-          <select disabled><option>Talat Sao Bus Station</option></select>
+          <select id="borderOrigin" onchange="updateBorderDest()">
+            <option value="talatsao">ຕະຫຼາດເຊົ້າ (Talat Sao)</option>
+            <option value="dongpalane">ດົງປ່າລານ (Dong Palane)</option>
+            <option value="thanaleng">ທ່ານາແລ້ງ (Tha Na Leng)</option>
+            <option value="bridge">ຂົວມິດຕະພາບ (Friendship Bridge)</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Destination</label>
-          <select disabled><option>Friendship Bridge</option></select>
+          <select id="borderDest" onchange="updateBorderOrigin()">
+            <option value="bridge">ຂົວມິດຕະພາບ (Friendship Bridge)</option>
+            <option value="thanaleng">ທ່ານາແລ້ງ (Tha Na Leng)</option>
+            <option value="dongpalane">ດົງປ່າລານ (Dong Palane)</option>
+            <option value="talatsao">ຕະຫຼາດເຊົ້າ (Talat Sao)</option>
+          </select>
         </div>
       </div>
     </div>
@@ -631,11 +641,33 @@ document.getElementById('destStation').addEventListener('change',updateFare);
 document.getElementById('greenRoute').addEventListener('change',updateFare);
 
 // ═══ FARE CALCULATION ═══
+// ═══ BORDER STATION LOGIC ═══
+function updateBorderDest(){
+  var o = document.getElementById('borderOrigin').value;
+  var d = document.getElementById('borderDest');
+  if(o===d.value){ d.value = o==='bridge'?'talatsao':'bridge'; }
+  updateFare();
+}
+function updateBorderOrigin(){
+  var d = document.getElementById('borderDest').value;
+  var o = document.getElementById('borderOrigin');
+  if(d===o.value){ o.value = d==='bridge'?'talatsao':'bridge'; }
+  updateFare();
+}
+
 function updateFare(){
   if(currentService==='border'){
-    document.getElementById('fareLAK').textContent = formatLAK(FARES.border.LAK * paxCount);
-    document.getElementById('fareTHB').textContent = '฿'+formatNumber(FARES.border.THB * paxCount);
-    document.getElementById('fareUSD').textContent = '$'+(FARES.border.USD * paxCount).toFixed(2);
+    var o = document.getElementById('borderOrigin').value;
+    var d = document.getElementById('borderDest').value;
+    // Fare varies by distance: full route=30000, shorter segments=20000
+    var fullRoute = (o==='talatsao'&&d==='bridge')||(o==='bridge'&&d==='talatsao');
+    var baseLAK = fullRoute ? 30000 : 20000;
+    var baseTHB = fullRoute ? 30 : 20;
+    var baseUSD = fullRoute ? 1.50 : 1.00;
+    document.getElementById('fareLAK').textContent = formatLAK(baseLAK * paxCount);
+    document.getElementById('fareTHB').textContent = '฿'+formatNumber(baseTHB * paxCount);
+    document.getElementById('fareUSD').textContent = '$'+(baseUSD * paxCount).toFixed(2);
+    document.getElementById('fareAmount').textContent = formatLAK(baseLAK * paxCount);
     return;
   }
   var fare = 4000;
